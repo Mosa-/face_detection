@@ -22,8 +22,7 @@ ros::Publisher mouthROIPublisher;
 CvHaarClassifierCascade *cascade_face = 0;
 CvHaarClassifierCascade *cascade_nose = 0;
 CvMemStorage *storage = 0;
-const char* cascade_name_f = "src/face_detection/src/haarcascade/haarcascade_frontalface_alt.xml";
-const char* cascade_name_n = "src/face_detection/src/haarcascade/haarcascade_mcs_nose.xml";
+const char* cascade_name_f = "src/face_detection/src/haarcascade/haarcascade_frontalface_default.xml";
 
 void imageCallback(const sensor_msgs::ImageConstPtr& msg){
 	cv::Mat img;
@@ -53,10 +52,6 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg){
 
 		for (int face = 0; face < faces->total; ++face) {
 			CvRect *e = (CvRect*)cvGetSeqElem(faces, face);
-			cvRectangle(&iplImg,
-						cvPoint(e->x, e->y),
-						cvPoint(e->x + e->width, e->y + e->height),
-						CV_RGB(255, 0, 0), 2, 8, 0);
 
 			int mouthHeightDifference = e->height/3;
 			int mouthWidthDifference = e->width/5;
@@ -69,11 +64,6 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg){
 
 			int mouthC2X = mouthC1X + mouthWidth;
 			int mouthC2Y = mouthC1Y + mouthHeight;
-
-			cvRectangle(&iplImg,
-							cvPoint(mouthC1X, mouthC1Y),
-							cvPoint(mouthC2X, mouthC2Y),
-							CV_RGB(255, 0, 0), 2, 8, 0);
 
 			faceROI.height = e->height;
 			faceROI.width = e->width;
@@ -139,11 +129,7 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg){
 //						CV_RGB(255, 255, 255), 1, 8, 0);
 
 
-
-
-	cvShowImage("face",&iplImg);
 	cvClearMemStorage(storage);
-	cv::waitKey(3);
 }
 
 
@@ -161,7 +147,6 @@ int main(int argc, char **argv)
   cv::namedWindow("face");
 
   cascade_face = (CvHaarClassifierCascade*)cvLoad(cascade_name_f, 0, 0, 0);
-  cascade_nose = (CvHaarClassifierCascade*)cvLoad(cascade_name_n, 0, 0, 0);
 
   storage = cvCreateMemStorage(0);
 
