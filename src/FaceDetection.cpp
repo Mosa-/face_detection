@@ -23,6 +23,7 @@ CvHaarClassifierCascade *cascade_face = 0;
 CvHaarClassifierCascade *cascade_nose = 0;
 CvMemStorage *storage = 0;
 const char* cascade_name_f = "src/face_detection/src/haarcascade/haarcascade_frontalface_default.xml";
+std::string mouthROIMethod;
 
 void imageCallback(const sensor_msgs::ImageConstPtr& msg){
 	cv::Mat img;
@@ -53,82 +54,55 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg){
 		for (int face = 0; face < faces->total; ++face) {
 			CvRect *e = (CvRect*)cvGetSeqElem(faces, face);
 
-			int mouthHeightDifference = e->height/3;
-			int mouthWidthDifference = e->width/5;
+			if(mouthROIMethod.compare("one") == 0){
+				int mouthHeightDifference = e->height/3;
+				int mouthWidthDifference = e->width/5;
 
-			int mouthHeight = mouthHeightDifference;
-			int mouthWidth = mouthWidthDifference * 3;
+				int mouthHeight = mouthHeightDifference;
+				int mouthWidth = mouthWidthDifference * 3;
 
-			int mouthC1X = e->x + mouthWidthDifference;
-			int mouthC1Y = e->y + mouthHeightDifference*2;
+				int mouthC1X = e->x + mouthWidthDifference;
+				int mouthC1Y = e->y + mouthHeightDifference*2;
 
-			int mouthC2X = mouthC1X + mouthWidth;
-			int mouthC2Y = mouthC1Y + mouthHeight;
+				int mouthC2X = mouthC1X + mouthWidth;
+				int mouthC2Y = mouthC1Y + mouthHeight;
+
+				mouthROI.height = mouthHeight;
+				mouthROI.width = mouthWidth;
+				mouthROI.x_offset = mouthC1X;
+				mouthROI.y_offset = mouthC1Y;
+
+			}else{
+				int fl, fw, ft, fh;
+
+				fl = e->x;
+				fw = e->x + e->width;
+				ft = e->y;
+				fh = e->y+e->height;
+
+				int ml, mw, mt, mh;
+
+				ml = fl + (fw - fl)/4;
+				mw = fw - (fw - fl)/4;
+				mt = ft + (fh - ft)/1.5;
+				mh = fh - (fh - ft)/15;
+
+				mouthROI.height = mh-mt;
+				mouthROI.width = mw-ml;
+				mouthROI.x_offset = ml;
+				mouthROI.y_offset = mt;
+			}
 
 			faceROI.height = e->height;
 			faceROI.width = e->width;
 			faceROI.x_offset = e->x;
 			faceROI.y_offset = e->y;
 
-			mouthROI.height = mouthHeight;
-			mouthROI.width = mouthWidth;
-			mouthROI.x_offset = mouthC1X;
-			mouthROI.y_offset = mouthC1Y;
 			faceROIPublisher.publish(faceROI);
 			mouthROIPublisher.publish(mouthROI);
-
 		}
 
 	}
-	cvClearMemStorage(storage);
-
-//	CvSeq *noses = cvHaarDetectObjects(
-//			&iplImg, cascade_nose, storage,
-//			2.0, 3, 0, cvSize( 25,15 ) );
-//
-//	if (noses->total > 0){
-//
-//		for (int nose = 0; nose < faces->total; ++nose) {
-//			CvRect *e = (CvRect*)cvGetSeqElem(noses, nose);
-//			cvRectangle(&iplImg,
-//						cvPoint(e->x, e->y),
-//						cvPoint(e->x + e->width, e->y + e->height),
-//						CV_RGB(255, 0, 0), 2, 8, 0);
-//
-//		}
-//	}
-
-
-
-//		int fl, fw, ft, fh;
-//
-//		fl = e->x;
-//		fw = e->width;
-//		ft = e->y;
-//		fh = e->height;
-//
-//		int ml, mw, mt, mh;
-
-//		ml = fl + (fw - fl)/4;
-//		mw = fw - (fw - fl)/4;
-//		mt = ft + (2*(fh - ft))/3;
-//		mh = fh - (fh - ft)/15;
-
-//		ml = fl - (fw - fl)/4;
-//		mw = fw - (fw + fl)/4;
-//		mt = ft - (2*(fh - ft))/3;
-//		mh = fh - (fh + ft)/5;
-//
-//		ROS_INFO("Face: Corner1: x=%d y=%d; Corner2: x=%d y=%d; faceHeight=%d, faceWidth=%d",fl, ft, fl+fw, ft+fh,fh,fw);
-//		ROS_INFO("Mouth: Corner1: x=%d y=%d; Corner2: x=%d y=%d; moutheight=%d, mouthWidth=%d\n",ml, mt, ml+mw, mt+mh, mh, mw);
-//
-//
-//		cvRectangle(&iplImg,
-//						cvPoint(ml, mt),
-//						cvPoint(ml + mw, mt + mh),
-//						CV_RGB(255, 255, 255), 1, 8, 0);
-
-
 	cvClearMemStorage(storage);
 }
 
@@ -138,13 +112,13 @@ int main(int argc, char **argv)
 
   ros::init(argc, argv, "face_detection");
 
-  ros::NodeHandle n;
+  ros::NodeHandle n("~");
 
   camImage = n.subscribe("/liprecKinect/rgb/image_raw", 10, imageCallback);
   faceROIPublisher = n.advertise<sensor_msgs::RegionOfInterest>("/face_detection/faceROI", 10);
   mouthROIPublisher = n.advertise<sensor_msgs::RegionOfInterest>("/face_detection/mouthROI", 10);
 
-  cv::namedWindow("face");
+  n.getParam("mouthROI", mouthROIMethod);
 
   cascade_face = (CvHaarClassifierCascade*)cvLoad(cascade_name_f, 0, 0, 0);
 
