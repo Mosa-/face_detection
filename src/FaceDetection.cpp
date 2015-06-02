@@ -64,24 +64,19 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg){
 				int mouthC1X = e->x + mouthWidthDifference;
 				int mouthC1Y = e->y + mouthHeightDifference*2;
 
-				int mouthC2X = mouthC1X + mouthWidth;
-				int mouthC2Y = mouthC1Y + mouthHeight;
-
 				mouthROI.height = mouthHeight;
 				mouthROI.width = mouthWidth;
 				mouthROI.x_offset = mouthC1X;
 				mouthROI.y_offset = mouthC1Y;
 
-			}else{
+			}else if(mouthROIMethod.compare("two") == 0){
 				int fl, fw, ft, fh;
-
 				fl = e->x;
 				fw = e->x + e->width;
 				ft = e->y;
 				fh = e->y+e->height;
 
 				int ml, mw, mt, mh;
-
 				ml = fl + (fw - fl)/4;
 				mw = fw - (fw - fl)/4;
 				mt = ft + (fh - ft)/1.5;
@@ -91,6 +86,24 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg){
 				mouthROI.width = mw-ml;
 				mouthROI.x_offset = ml;
 				mouthROI.y_offset = mt;
+			}else{
+				int mouthHeightDifference = e->height/3;
+				int mouthHeight = mouthHeightDifference;
+				int mouthC1Y = e->y + mouthHeightDifference*2;
+				int mouthC2Y = mouthC1Y + mouthHeight;
+
+				int fl, fw;
+				fl = e->x;
+				fw = e->x + e->width;
+
+				int ml, mw;
+				ml = fl + (fw - fl)/4;
+				mw = fw - (fw - fl)/4;
+
+				mouthROI.height = mouthHeight;
+				mouthROI.width = mw-ml;
+				mouthROI.x_offset = ml;
+				mouthROI.y_offset = mouthC1Y;
 			}
 
 			faceROI.height = e->height;
