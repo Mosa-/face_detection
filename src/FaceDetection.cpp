@@ -15,6 +15,7 @@
 
 using namespace std_msgs;
 using namespace std;
+using namespace cv;
 
 ros::Subscriber camImage;
 ros::Publisher faceROIPublisher;
@@ -23,7 +24,14 @@ CvHaarClassifierCascade *cascade_face = 0;
 CvHaarClassifierCascade *cascade_nose = 0;
 CvMemStorage *storage = 0;
 const char* cascade_name_f = "src/face_detection/src/haarcascade/haarcascade_frontalface_default.xml";
+//const char* cascade_name_f = "src/face_detection/src/haarcascade/haarcascade_frontalface_alt.xml";
+//const char* cascade_name_f = "src/face_detection/src/haarcascade/haarcascade_frontalface_alt2.xml";
+//const char* cascade_name_f = "src/face_detection/src/haarcascade/haarcascade_frontalface_alt_tree.xml";
+//const char* cascade_name_f = "src/face_detection/src/haarcascade/haarcascade_profileface.xml";
+
 std::string mouthROIMethod;
+sensor_msgs::RegionOfInterest lastFaceROI;
+
 
 void imageCallback(const sensor_msgs::ImageConstPtr& msg){
 	cv::Mat img;
@@ -53,6 +61,46 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg){
 
 		for (int face = 0; face < faces->total; ++face) {
 			CvRect *e = (CvRect*)cvGetSeqElem(faces, face);
+
+			faceROI.height = e->height;
+			faceROI.width = e->width;
+			faceROI.x_offset = e->x;
+			faceROI.y_offset = e->y;
+
+			if(lastFaceROI.height == 0){
+				lastFaceROI = faceROI;
+			}else{
+				//removeFaceROIShaking();
+				if(lastFaceROI.x_offset < faceROI.x_offset && lastFaceROI.y_offset < faceROI.y_offset){
+
+					Point P1(lastFaceROI.x_offset + lastFaceROI.width, lastFaceROI.y_offset+lastFaceROI.height);
+					Point P2(faceROI.x_offset, faceROI.y_offset);
+
+				}else if(faceROI.x_offset < lastFaceROI.x_offset && faceROI.y_offset < lastFaceROI.y_offset){
+
+					Point P1(faceROI.x_offset + faceROI.width, faceROI.y_offset+faceROI.height);
+					Point P2(lastFaceROI.x_offset, lastFaceROI.y_offset);
+
+				}else if(faceROI.x_offset < lastFaceROI.x_offset && faceROI.y_offset > lastFaceROI.y_offset){
+
+					Point P1(faceROI.x_offset + faceROI.width, faceROI.y_offset);
+					Point P2(lastFaceROI.x_offset, lastFaceROI.y_offset+lastFaceROI.height);
+
+				}else if(lastFaceROI.x_offset < faceROI.x_offset && lastFaceROI.y_offset > faceROI.y_offset){
+
+					Point P1(lastFaceROI.x_offset + lastFaceROI.width, lastFaceROI.y_offset);
+					Point P2(faceROI.x_offset, faceROI.y_offset + faceROI.height);
+				}
+				int intersectWidth = P1.x - P2.x;
+				int intersectHeight = P1.y - P2.y;
+				int aIntersect = intersectWidth * intersectHeight;
+				int aTotal = faceROI.width * faceROI.height;
+
+				double covers = aIntersect / aTotal;
+
+			}
+
+
 
 			if(mouthROIMethod.compare("one") == 0){
 				int mouthHeightDifference = e->height/3;
@@ -105,11 +153,6 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg){
 				mouthROI.x_offset = ml;
 				mouthROI.y_offset = mouthC1Y;
 			}
-
-			faceROI.height = e->height;
-			faceROI.width = e->width;
-			faceROI.x_offset = e->x;
-			faceROI.y_offset = e->y;
 
 			faceROIPublisher.publish(faceROI);
 			mouthROIPublisher.publish(mouthROI);
