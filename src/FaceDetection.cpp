@@ -31,8 +31,40 @@ const char* cascade_name_f = "src/face_detection/src/haarcascade/haarcascade_fro
 
 std::string mouthROIMethod;
 sensor_msgs::RegionOfInterest lastFaceROI;
-double thresholdKeepFaceROI = 0.95;
+double thresholdKeepFaceROI = 0.90;
 
+sensor_msgs::RegionOfInterest removeFaceROIShaking(sensor_msgs::RegionOfInterest& faceROI){
+	sensor_msgs::RegionOfInterest intersectROI;
+	sensor_msgs::RegionOfInterest currentFaceROI = faceROI;
+
+	if(lastFaceROI.height == 0){
+		lastFaceROI = faceROI;
+	}else{
+		int xMax = max(faceROI.x_offset, lastFaceROI.x_offset);
+		int yMax = max(faceROI.y_offset, lastFaceROI.y_offset);
+		int widthMin = min(faceROI.x_offset + faceROI.width, lastFaceROI.x_offset + lastFaceROI.width);
+		int heightMin = min(faceROI.y_offset + faceROI.height, lastFaceROI.y_offset + lastFaceROI.height);
+
+		if(xMax < widthMin && yMax < heightMin){
+			intersectROI.x_offset = xMax;
+			intersectROI.y_offset = yMax;
+			intersectROI.width = widthMin - xMax;
+			intersectROI.height = heightMin - yMax;
+
+			int areaIntersect = intersectROI.width * intersectROI.height;
+			int areaTotal = faceROI.width * faceROI.height;
+
+			double covers = areaIntersect / (double) areaTotal;
+
+			if(covers > thresholdKeepFaceROI){
+				faceROI = lastFaceROI;
+			}else{
+				lastFaceROI = currentFaceROI;
+			}
+		}
+	}
+	return faceROI;
+}
 
 void imageCallback(const sensor_msgs::ImageConstPtr& msg){
 	cv::Mat img;
@@ -58,9 +90,6 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg){
 	sensor_msgs::RegionOfInterest faceROI;
 	sensor_msgs::RegionOfInterest mouthROI;
 	
-	sensor_msgs::RegionOfInterest intersectROI;
-	bool keepFaceROI = false;
-
 
 	if (faces->total > 0){
 
@@ -72,75 +101,17 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg){
 			faceROI.x_offset = e->x;
 			faceROI.y_offset = e->y;
 
-			if(lastFaceROI.height == 0){
-				lastFaceROI = faceROI;
-			}else{
-				//removeFaceROIShaking();
-														
-				//overlapRoi gucken
-				int xMax = max(faceROI.x_offset, lastFaceROI.x_offset);
-				int yMax = max(faceROI.y_offset, lastFaceROI.y_offset);
-				int widthMin = min(faceROI.x_offset + faceROI.width, lastFaceROI.x_offset + lastFaceROI.width);
-				int heightMin = min(faceROI.y_offset + faceROI.height, lastFaceROI.y_offset + lastFaceROI.height); 
-				
-				if(xMax < widthMin && yMax < heightMin){
-					intersectROI.x_offset = xMax;
-					intersectROI.y_offset = yMax;
-					intersectROI.width = widthMin - xMax;
-					intersectROI.height = heightMin - yMax;
-					
-					int areaIntersect = intersectROI.width * intersectROI.height;
-					int areaTotal = faceROI.width * faceROI.height;
-					
-					double covers = areaIntersect / (double) areaTotal;
-					
-					if(covers > thresholdKeepFaceROI){
-						faceROI = lastFaceROI;
-					}
-					
-					lastFaceROI = faceROI;
-				}
-								
-				// if(lastFaceROI.x_offset < faceROI.x_offset && lastFaceROI.y_offset < faceROI.y_offset){
-
-					// Point P1(lastFaceROI.x_offset + lastFaceROI.width, lastFaceROI.y_offset+lastFaceROI.height);
-					// Point P2(faceROI.x_offset, faceROI.y_offset);
-
-				// }else if(faceROI.x_offset < lastFaceROI.x_offset && faceROI.y_offset < lastFaceROI.y_offset){
-
-					// Point P1(faceROI.x_offset + faceROI.width, faceROI.y_offset+faceROI.height);
-					// Point P2(lastFaceROI.x_offset, lastFaceROI.y_offset);
-
-				// }else if(faceROI.x_offset < lastFaceROI.x_offset && faceROI.y_offset > lastFaceROI.y_offset){
-
-					// Point P1(faceROI.x_offset + faceROI.width, faceROI.y_offset);
-					// Point P2(lastFaceROI.x_offset, lastFaceROI.y_offset+lastFaceROI.height);
-
-				// }else if(lastFaceROI.x_offset < faceROI.x_offset && lastFaceROI.y_offset > faceROI.y_offset){
-
-					// Point P1(lastFaceROI.x_offset + lastFaceROI.width, lastFaceROI.y_offset);
-					// Point P2(faceROI.x_offset, faceROI.y_offset + faceROI.height);
-				// }
-				// int intersectWidth = P1.x - P2.x;
-				// int intersectHeight = P1.y - P2.y;
-				// int aIntersect = intersectWidth * intersectHeight;
-				// int aTotal = faceROI.width * faceROI.height;
-
-				// double covers = aIntersect / aTotal;
-
-			}
-
-
+			faceROI = removeFaceROIShaking(faceROI);
 
 			if(mouthROIMethod.compare("one") == 0){
-				int mouthHeightDifference = e->height/3;
-				int mouthWidthDifference = e->width/5;
+				int mouthHeightDifference = faceROI.height/3;
+				int mouthWidthDifference = faceROI.width/5;
 
 				int mouthHeight = mouthHeightDifference;
 				int mouthWidth = mouthWidthDifference * 3;
 
-				int mouthC1X = e->x + mouthWidthDifference;
-				int mouthC1Y = e->y + mouthHeightDifference*2;
+				int mouthC1X = faceROI.x_offset + mouthWidthDifference;
+				int mouthC1Y = faceROI.y_offset + mouthHeightDifference*2;
 
 				mouthROI.height = mouthHeight;
 				mouthROI.width = mouthWidth;
@@ -149,10 +120,10 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg){
 
 			}else if(mouthROIMethod.compare("two") == 0){
 				int fl, fw, ft, fh;
-				fl = e->x;
-				fw = e->x + e->width;
-				ft = e->y;
-				fh = e->y+e->height;
+				fl = faceROI.x_offset;
+				fw = faceROI.x_offset + faceROI.width;
+				ft = faceROI.y_offset;
+				fh = faceROI.y_offset + faceROI.height;
 
 				int ml, mw, mt, mh;
 				ml = fl + (fw - fl)/4;
@@ -165,14 +136,14 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg){
 				mouthROI.x_offset = ml;
 				mouthROI.y_offset = mt;
 			}else{
-				int mouthHeightDifference = e->height/3;
+				int mouthHeightDifference = faceROI.height/3;
 				int mouthHeight = mouthHeightDifference;
-				int mouthC1Y = e->y + mouthHeightDifference*2;
+				int mouthC1Y = faceROI.y_offset + mouthHeightDifference*2;
 				int mouthC2Y = mouthC1Y + mouthHeight;
 
 				int fl, fw;
-				fl = e->x;
-				fw = e->x + e->width;
+				fl = faceROI.x_offset;
+				fw = faceROI.x_offset + faceROI.width;
 
 				int ml, mw;
 				ml = fl + (fw - fl)/4;
