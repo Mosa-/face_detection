@@ -72,7 +72,7 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg){
 	cv_bridge::CvImagePtr cv_ptr;
 	try
 	{
-		cv_ptr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::MONO8);
+		cv_ptr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::TYPE_8UC1);
 	}
 	catch (cv_bridge::Exception& e)
 	{
@@ -171,11 +171,12 @@ int main(int argc, char **argv)
 
   ros::NodeHandle n("~");
 
-  camImage = n.subscribe("/liprecKinect/rgb/image_raw", 10, imageCallback);
+  camImage = n.subscribe("/kinect2/qhd/image_mono_rect", 100, imageCallback);
   faceROIPublisher = n.advertise<sensor_msgs::RegionOfInterest>("/face_detection/faceROI", 10);
   mouthROIPublisher = n.advertise<sensor_msgs::RegionOfInterest>("/face_detection/mouthROI", 10);
 
   n.getParam("mouthROI", mouthROIMethod);
+  n.getParam("THkeepROI", thresholdKeepFaceROI);
 
   cascade_face = (CvHaarClassifierCascade*)cvLoad(cascade_name_f, 0, 0, 0);
 
