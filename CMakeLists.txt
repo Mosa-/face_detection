@@ -14,7 +14,9 @@ find_package(catkin REQUIRED COMPONENTS
 )
 
 find_package(OpenCV REQUIRED)
+find_package(Qt4 COMPONENTS QtCore QtGui REQUIRED)
 
+include(${QT_USE_FILE})
 
 catkin_package(
 #  INCLUDE_DIRS include
@@ -27,11 +29,15 @@ include_directories(
   ${catkin_INCLUDE_DIRS} ${OpenCV_INCLUDE_DIRS}
 )
 
-add_executable(face_detection src/FaceDetection.cpp)
+add_library(fd src/FaceDetection.cpp)
+target_link_libraries(fd ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${QT_QTCORE_LIBRARY} ${QT_QTGUI_LIBRARY})
+
+add_executable(face_detection src/FaceDetectionListener.cpp)
 
 target_link_libraries(face_detection
   ${catkin_LIBRARIES}
   ${OpenCV_LIBRARIES}
+  fd
 )
 
 

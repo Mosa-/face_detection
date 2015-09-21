@@ -1,28 +1,5 @@
-#include <string>
-#include <stdlib.h>
-#include <ros/ros.h>
-#include <std_msgs/String.h>
-#include <std_srvs/Empty.h>
-#include <std_msgs/Float32MultiArray.h>
+#include "FaceDetection.h"
 
-#include <image_transport/image_transport.h>
-#include <cv_bridge/cv_bridge.h>
-#include <cv.h>
-#include <sensor_msgs/image_encodings.h>
-#include <opencv2/imgproc/imgproc.hpp>
-#include <opencv2/highgui/highgui.hpp>
-
-
-using namespace std_msgs;
-using namespace std;
-using namespace cv;
-
-ros::Subscriber camImage;
-ros::Publisher faceROIPublisher;
-ros::Publisher mouthROIPublisher;
-CvHaarClassifierCascade *cascade_face = 0;
-CvHaarClassifierCascade *cascade_nose = 0;
-CvMemStorage *storage = 0;
 const char* cascade_name_f = "src/face_detection/src/haarcascade/haarcascade_frontalface_default.xml";
 //const char* cascade_name_f = "src/face_detection/src/haarcascade/haarcascade_frontalface_alt.xml";
 //const char* cascade_name_f = "src/face_detection/src/haarcascade/haarcascade_frontalface_alt2.xml";
@@ -30,10 +7,61 @@ const char* cascade_name_f = "src/face_detection/src/haarcascade/haarcascade_fro
 //const char* cascade_name_f = "src/face_detection/src/haarcascade/haarcascade_profileface.xml";
 
 std::string mouthROIMethod;
-sensor_msgs::RegionOfInterest lastFaceROI;
 double thresholdKeepFaceROI = 0.90;
+bool useCam = true;
 
-sensor_msgs::RegionOfInterest removeFaceROIShaking(sensor_msgs::RegionOfInterest& faceROI){
+FaceDetection::FaceDetection(ros::NodeHandle *nh, QObject *parent): QObject(parent)
+{
+
+    const char* cascade_name_f = "src/face_detection/src/haarcascade/haarcascade_frontalface_default.xml";
+    //const char* cascade_name_f = "src/face_detection/src/haarcascade/haarcascade_frontalface_alt.xml";
+    //const char* cascade_name_f = "src/face_detection/src/haarcascade/haarcascade_frontalface_alt2.xml";
+    //const char* cascade_name_f = "src/face_detection/src/haarcascade/haarcascade_frontalface_alt_tree.xml";
+    //const char* cascade_name_f = "src/face_detection/src/haarcascade/haarcascade_profileface.xml";
+
+
+    this->nh = nh;
+    faceROIPublisher = nh->advertise<sensor_msgs::RegionOfInterest>("/face_detection/faceROI", 10);
+    mouthROIPublisher = nh->advertise<sensor_msgs::RegionOfInterest>("/face_detection/mouthROI", 10);
+
+    cascade_face = (CvHaarClassifierCascade*)cvLoad(cascade_name_f, 0, 0, 0);
+
+    storage = cvCreateMemStorage(0);
+}
+
+void FaceDetection::prepareFaceMouthROISender()
+{
+    QThread t;
+    QTimer timer;
+
+    QObject::connect(&timer, SIGNAL(timeout()), this, SLOT(sendFaceMouthROI()));
+    timer.start(1000);
+
+    timer.moveToThread(&t);
+    worker.moveToThread(&t);
+
+    t.start();
+
+}
+
+//void FaceDetection::sendFaceMouthROI(){
+//    ROS_INFO("EINFACH SO");
+//    ROS_INFO("EINFACH SO");
+
+//    ROS_INFO("EINFACH SO");
+
+//    ROS_INFO("EINFACH SO");
+
+//    ROS_INFO("EINFACH SO");
+
+//    ROS_INFO("EINFACH SO");
+
+//    ROS_INFO("EINFACH SO");
+
+
+//}
+
+sensor_msgs::RegionOfInterest FaceDetection::removeFaceROIShaking(sensor_msgs::RegionOfInterest& faceROI){
 	sensor_msgs::RegionOfInterest intersectROI;
 	sensor_msgs::RegionOfInterest currentFaceROI = faceROI;
 
@@ -66,7 +94,7 @@ sensor_msgs::RegionOfInterest removeFaceROIShaking(sensor_msgs::RegionOfInterest
 	return faceROI;
 }
 
-void imageCallback(const sensor_msgs::ImageConstPtr& msg){
+void FaceDetection::imageCallback(const sensor_msgs::ImageConstPtr& msg){
 	cv::Mat img;
 
 	cv_bridge::CvImagePtr cv_ptr;
@@ -163,26 +191,3 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg){
 	cvClearMemStorage(storage);
 }
 
-
-int main(int argc, char **argv)
-{
-
-  ros::init(argc, argv, "face_detection");
-
-  ros::NodeHandle n("~");
-
-  camImage = n.subscribe("/kinect2/qhd/image_mono_rect", 100, imageCallback);
-  faceROIPublisher = n.advertise<sensor_msgs::RegionOfInterest>("/face_detection/faceROI", 10);
-  mouthROIPublisher = n.advertise<sensor_msgs::RegionOfInterest>("/face_detection/mouthROI", 10);
-
-  n.getParam("mouthROI", mouthROIMethod);
-  n.getParam("THkeepROI", thresholdKeepFaceROI);
-
-  cascade_face = (CvHaarClassifierCascade*)cvLoad(cascade_name_f, 0, 0, 0);
-
-  storage = cvCreateMemStorage(0);
-
-  ros::spin();
-
-  return 0;
-}
