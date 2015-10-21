@@ -12,11 +12,13 @@
 #include <cv_bridge/cv_bridge.h>
 #include <cv.h>
 #include <sensor_msgs/image_encodings.h>
+#include <opencv2/opencv.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <pthread.h>
 #include <QThread>
 #include <QTimer>
+#include <QDateTime>
 
 using namespace std_msgs;
 using namespace std;
@@ -29,6 +31,7 @@ public:
 
     FaceDetection(ros::NodeHandle* nh, QObject *parent = 0);
 
+    void prepareFaceDetection(std::string mouthROIMethod, double thresholdKeepFaceROI = 0.90,  bool useCam = true);
     void prepareFaceMouthROISender();
     void imageCallback(const sensor_msgs::ImageConstPtr &msg);
 
@@ -37,14 +40,22 @@ private:
     ros::Publisher faceROIPublisher;
     ros::Publisher mouthROIPublisher;
     CvHaarClassifierCascade *cascade_face;
-    CvHaarClassifierCascade *cascade_nose;
     CvMemStorage *storage;
     sensor_msgs::RegionOfInterest lastFaceROI;
 
+    QString cascade_name_f;
+
+    std::string mouthROIMethod;
+    double thresholdKeepFaceROI;
+    bool useCam;
+
+    QTimer* noUseCamTimer;
 
     sensor_msgs::RegionOfInterest removeFaceROIShaking(sensor_msgs::RegionOfInterest &faceROI);
-private slots:
-    void sendFaceMouthROI();
+public slots:
+
+signals:
+    void test();
 
 };
 

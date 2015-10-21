@@ -1,65 +1,47 @@
 #include "FaceDetection.h"
 
-const char* cascade_name_f = "src/face_detection/src/haarcascade/haarcascade_frontalface_default.xml";
-//const char* cascade_name_f = "src/face_detection/src/haarcascade/haarcascade_frontalface_alt.xml";
-//const char* cascade_name_f = "src/face_detection/src/haarcascade/haarcascade_frontalface_alt2.xml";
-//const char* cascade_name_f = "src/face_detection/src/haarcascade/haarcascade_frontalface_alt_tree.xml";
-//const char* cascade_name_f = "src/face_detection/src/haarcascade/haarcascade_profileface.xml";
-
-std::string mouthROIMethod;
-double thresholdKeepFaceROI = 0.90;
-bool useCam = true;
 
 FaceDetection::FaceDetection(ros::NodeHandle *nh, QObject *parent): QObject(parent)
 {
 
-    const char* cascade_name_f = "src/face_detection/src/haarcascade/haarcascade_frontalface_default.xml";
-    //const char* cascade_name_f = "src/face_detection/src/haarcascade/haarcascade_frontalface_alt.xml";
-    //const char* cascade_name_f = "src/face_detection/src/haarcascade/haarcascade_frontalface_alt2.xml";
-    //const char* cascade_name_f = "src/face_detection/src/haarcascade/haarcascade_frontalface_alt_tree.xml";
-    //const char* cascade_name_f = "src/face_detection/src/haarcascade/haarcascade_profileface.xml";
+    cascade_name_f = "src/face_detection/src/haarcascade/haarcascade_frontalface_default.xml";
+    //cascade_name_f = "src/face_detection/src/haarcascade/haarcascade_frontalface_alt.xml";
+    //cascade_name_f = "src/face_detection/src/haarcascade/haarcascade_frontalface_alt2.xml";
+    //cascade_name_f = "src/face_detection/src/haarcascade/haarcascade_frontalface_alt_tree.xml";
+    //cascade_name_f = "src/face_detection/src/haarcascade/haarcascade_profileface.xml";
 
 
     this->nh = nh;
     faceROIPublisher = nh->advertise<sensor_msgs::RegionOfInterest>("/face_detection/faceROI", 10);
     mouthROIPublisher = nh->advertise<sensor_msgs::RegionOfInterest>("/face_detection/mouthROI", 10);
-
-    cascade_face = (CvHaarClassifierCascade*)cvLoad(cascade_name_f, 0, 0, 0);
-
-    storage = cvCreateMemStorage(0);
+    cascade_face = NULL;
+    storage = NULL;
 }
 
-void FaceDetection::prepareFaceMouthROISender()
+void FaceDetection::prepareFaceDetection(string mouthROIMethod, double thresholdKeepFaceROI, bool useCam)
 {
-    QThread t;
-    QTimer timer;
+    this->mouthROIMethod = mouthROIMethod;
+    this->thresholdKeepFaceROI = thresholdKeepFaceROI;
+    this->useCam = useCam;
 
-    QObject::connect(&timer, SIGNAL(timeout()), this, SLOT(sendFaceMouthROI()));
-    timer.start(1000);
-
-    timer.moveToThread(&t);
-    worker.moveToThread(&t);
-
-    t.start();
-
+    if(useCam){
+        ROS_INFO("TODES");
+        storage = cvCreateMemStorage(0);
+        cascade_face = (CvHaarClassifierCascade*)cvLoad(cascade_name_f.toStdString().c_str(), 0, 0, 0);
+    }
 }
 
-//void FaceDetection::sendFaceMouthROI(){
-//    ROS_INFO("EINFACH SO");
-//    ROS_INFO("EINFACH SO");
-
-//    ROS_INFO("EINFACH SO");
-
-//    ROS_INFO("EINFACH SO");
-
-//    ROS_INFO("EINFACH SO");
-
-//    ROS_INFO("EINFACH SO");
-
-//    ROS_INFO("EINFACH SO");
-
-
-//}
+void FaceDetection::sendFaceMouthROI()
+{
+    int i = 0;
+    qint64 timestamp = QDateTime::currentMSecsSinceEpoch();
+    while(true){
+        // hier schicken
+        while(QDateTime::currentMSecsSinceEpoch() < timestamp+3000){
+        }
+        timestamp = QDateTime::currentMSecsSinceEpoch();
+    }
+}
 
 sensor_msgs::RegionOfInterest FaceDetection::removeFaceROIShaking(sensor_msgs::RegionOfInterest& faceROI){
 	sensor_msgs::RegionOfInterest intersectROI;
@@ -111,9 +93,9 @@ void FaceDetection::imageCallback(const sensor_msgs::ImageConstPtr& msg){
 	img = cv_ptr->image;
 	IplImage iplImg = img;
 
-	CvSeq *faces = cvHaarDetectObjects(
-			&iplImg, cascade_face, storage,
-			2.0, 3, 0, cvSize( 50,50 ) );
+    CvSeq *faces = cvHaarDetectObjects(
+            &iplImg, cascade_face, storage,
+            2.0, 3, 0, cvSize( 50,50 ) );
 
 	sensor_msgs::RegionOfInterest faceROI;
 	sensor_msgs::RegionOfInterest mouthROI;
@@ -188,6 +170,6 @@ void FaceDetection::imageCallback(const sensor_msgs::ImageConstPtr& msg){
 		}
 
 	}
-	cvClearMemStorage(storage);
+    cvClearMemStorage(storage);
 }
 

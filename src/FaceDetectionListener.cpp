@@ -17,13 +17,14 @@ int main(int argc, char **argv)
   n.getParam("THkeepROI", thresholdKeepFaceROI);
   n.getParam("cam", useCam);
 
+  faceDetection->prepareFaceDetection(mouthROIMethod, thresholdKeepFaceROI, useCam);
+
   ros::Subscriber camImage;
   if(useCam){
-    camImage = n.subscribe("/kinect2/qhd/image_mono", 100, &FaceDetection::imageCallback, faceDetection);
+      camImage = n.subscribe("/kinect2/qhd/image_mono", 100, &FaceDetection::imageCallback, faceDetection);
   }else{
-    //facedetection start thread
+      faceDetection->prepareFaceMouthROISender();
   }
-
 
   ros::spin();
 
