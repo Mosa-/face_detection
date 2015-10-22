@@ -32,9 +32,9 @@ public:
     FaceDetection(ros::NodeHandle* nh, QObject *parent = 0);
 
     void prepareFaceDetection(std::string mouthROIMethod, double thresholdKeepFaceROI = 0.90,  bool useCam = true);
-    void prepareFaceMouthROISender();
     void imageCallback(const sensor_msgs::ImageConstPtr &msg);
 
+    void sendFaceMouthROI();
 private:
     ros::NodeHandle* nh;
     ros::Publisher faceROIPublisher;
@@ -55,7 +55,6 @@ private:
 public slots:
 
 signals:
-    void test();
 
 };
 

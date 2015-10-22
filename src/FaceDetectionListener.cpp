@@ -23,7 +23,7 @@ int main(int argc, char **argv)
   if(useCam){
       camImage = n.subscribe("/kinect2/qhd/image_mono", 100, &FaceDetection::imageCallback, faceDetection);
   }else{
-      faceDetection->prepareFaceMouthROISender();
+      faceDetection->sendFaceMouthROI();
   }
 
   ros::spin();

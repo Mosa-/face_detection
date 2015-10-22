@@ -25,7 +25,6 @@ void FaceDetection::prepareFaceDetection(string mouthROIMethod, double threshold
     this->useCam = useCam;
 
     if(useCam){
-        ROS_INFO("TODES");
         storage = cvCreateMemStorage(0);
         cascade_face = (CvHaarClassifierCascade*)cvLoad(cascade_name_f.toStdString().c_str(), 0, 0, 0);
     }
@@ -145,7 +144,17 @@ void FaceDetection::imageCallback(const sensor_msgs::ImageConstPtr& msg){
 				mouthROI.width = mw-ml;
 				mouthROI.x_offset = ml;
 				mouthROI.y_offset = mt;
-			}else{
+            }else if(mouthROIMethod.compare("three") == 0){
+                // paper 06908216.pdf
+                int d = faceROI.width/2;
+                int offsetToY = (int) (d * (5/6.0));
+
+                mouthROI.height = offsetToY;
+                mouthROI.width = d;
+                mouthROI.x_offset = faceROI.x_offset + d/2;
+                mouthROI.y_offset = faceROI.y_offset + (faceROI.height - offsetToY);
+
+            }else{
 				int mouthHeightDifference = faceROI.height/3;
 				int mouthHeight = mouthHeightDifference;
 				int mouthC1Y = faceROI.y_offset + mouthHeightDifference*2;
