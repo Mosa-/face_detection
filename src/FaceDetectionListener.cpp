@@ -21,7 +21,7 @@ int main(int argc, char **argv)
 
   ros::Subscriber camImage;
   if(useCam){
-      camImage = n.subscribe("/kinect2/qhd/image_mono", 100, &FaceDetection::imageCallback, faceDetection);
+      camImage = n.subscribe("/kinect2/qhd/image_mono_rect", 100, &FaceDetection::imageCallback, faceDetection);
   }else{
       faceDetection->sendFaceMouthROI();
   }
